@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+    spec:
+      containers:
+        - name: backstage
+          image: backstage-app:1.0.0
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 7007
+          args:
+            - node
+            - packages/backend
+            - --config
+            - app-config.yaml
+            - --config
+            - app-config.production.yaml
+          envFrom:
+            - secretRef:
+                name: backstage-k8s-token
+          volumeMounts:
+            - name: config
+              mountPath: /app/app-config.production.yaml
+              subPath: app-config.production.yaml
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: config
+          configMap:
+            name: backstage-config
